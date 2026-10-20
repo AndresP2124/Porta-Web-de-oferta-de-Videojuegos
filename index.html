@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Plataforma de monitoreo de ofertas de videojuegos en tiendas digitales mediante consumo de API REST con JavaScript nativo.">
+    <title>Games For The Broke - Monitor de Ofertas Digitales</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Barra Lateral Izquierda: Identidad, Filtros de Catálogo y Telemetría HTTP -->
+        <aside class="app-sidebar" aria-label="Navegación y Telemetría del Sistema">
+            <div class="brand-box">
+                <span class="brand-mark" aria-hidden="true"></span>
+                <div class="brand-text">
+                    <h1 class="brand-title">GAMES FOR THE BROKE</h1>
+                    <p class="brand-subtitle">CheapShark REST Client</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-section" aria-labelledby="nav-Store-heading">
+                <h2 id="nav-Store-heading" class="sidebar-heading">FILTROS DE CATÁLOGO</h2>
+                <div class="sidebar-controls">
+                    <div class="control-group">
+                        <label for="store-select">Plataforma Digital (Promesas)</label>
+                        <select id="store-select" name="storeID" form="deal-search-form">
+                            <option value="">Todas las tiendas</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="max-price">Precio Techo (USD)</label>
+                        <input 
+                            type="number" 
+                            id="max-price" 
+                            name="upperPrice" 
+                            form="deal-search-form"
+                            min="1" 
+                            max="100" 
+                            value="35" 
+                            step="1"
+                        >
+                    </div>
+
+                    <div class="quick-categories">
+                        <span class="control-label">Búsquedas Rápidas</span>
+                        <ul class="category-list">
+                            <li>
+                                <button type="button" class="category-btn active" data-query="Batman">
+                                    Catálogo Destacado
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="category-btn" data-query="Resident Evil">
+                                    Survival Horror
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="category-btn" data-query="Star Wars">
+                                    Ciencia Ficción
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="category-btn" data-query="Assassin">
+                                    Acción y Aventura
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+
+            <section class="sidebar-section telemetry-box" aria-labelledby="telemetry-heading">
+                <h2 id="telemetry-heading" class="sidebar-heading">TELEMETRÍA DE RED HTTP</h2>
+                <dl class="telemetry-list">
+                    <div class="telemetry-row">
+                        <dt>Estado HTTP</dt>
+                        <dd><output id="http-status" class="telemetry-badge status-neutral">En espera</output></dd>
+                    </div>
+                    <div class="telemetry-row">
+                        <dt>Latencia</dt>
+                        <dd><output id="network-latency" class="telemetry-mono">0 ms</output></dd>
+                    </div>
+                    <div class="telemetry-row">
+                        <dt>Reintentos</dt>
+                        <dd><output id="retry-count" class="telemetry-mono">0 / 3</output></dd>
+                    </div>
+                    <div class="telemetry-row">
+                        <dt>Paradigma</dt>
+                        <dd><output id="async-method" class="telemetry-mono">Ninguno</output></dd>
+                    </div>
+                </dl>
+
+                <button 
+                    type="button" 
+                    id="btn-simulate-error" 
+                    class="btn-diagnostic" 
+                    title="Fuerza una petición a un endpoint inválido para auditar el algoritmo de reintento automático"
+                >
+                    Simular Fallo HTTP (Retry)
+                </button>
+            </section>
+
+            <footer class="sidebar-footer">
+                <p>Diseño de Sistemas en Internet</p>
+                <p>Optimizado 1024x768 px</p>
+            </footer>
+        </aside>
+
+        <!-- Área de Trabajo Derecha: Buscador Superior, Banner Hero y Grilla de Ofertas -->
+        <div class="app-workspace">
+            <header class="top-bar">
+                <form id="deal-search-form" class="top-search-form" novalidate>
+                    <label for="game-title" class="sr-only">Buscar videojuego por título</label>
+                    <input 
+                        type="text" 
+                        id="game-title" 
+                        name="title" 
+                        class="search-input"
+                        placeholder="Buscar título en CheapShark (ej. Cyberpunk, Halo, Witcher)..." 
+                        autocomplete="off"
+                        required
+                    >
+                    <button type="submit" id="btn-search" class="btn-search-submit">
+                        Consultar API
+                    </button>
+                </form>
+
+                <div class="user-status-bar">
+                    <span class="api-indicator">CheapShark REST v1.0</span>
+                    <span class="academic-badge">4to Año Ing.</span>
+                </div>
+            </header>
+
+            <main class="workspace-content">
+                <!-- Área Dinámica de Notificaciones de Estado y Reintentos -->
+                <section id="status-notification" class="notification-banner hidden" role="status" aria-live="polite">
+                    <p id="notification-message" class="notification-text"></p>
+                </section>
+
+                <!-- Sección Superior: Banner Principal (Recommended & Featured) -->
+                <section id="featured-section" class="featured-section" aria-labelledby="featured-heading">
+                    <div class="section-header">
+                        <h2 id="featured-heading" class="section-title">Oferta Destacada y Recomendada</h2>
+                        <span id="featured-store-tag" class="featured-tag">Mejor Ahorro Detectado</span>
+                    </div>
+
+                    <article id="featured-banner" class="featured-hero">
+                        <div class="featured-info">
+                            <span id="featured-badge" class="hero-savings-pill">Cargando catálogo...</span>
+                            <h3 id="featured-title" class="hero-title">Sincronizando con CheapShark API</h3>
+                            <p id="featured-desc" class="hero-description">
+                                El sistema está ejecutando las peticiones asíncronas iniciales para seleccionar la oferta con mayor porcentaje de descuento disponible en tiempo real.
+                            </p>
+                            <div class="hero-metrics">
+                                <span id="featured-rating" class="hero-rating">Valoración: --</span>
+                                <span id="featured-normal-price" class="hero-price-old">$0.00</span>
+                                <span id="featured-sale-price" class="hero-price-new">$0.00 USD</span>
+                            </div>
+                            <div class="hero-actions">
+                                <a id="featured-link" href="#" target="_blank" rel="noopener noreferrer" class="btn-hero-action">
+                                    Explorar Oferta Ahora
+                                </a>
+                            </div>
+                        </div>
+                        <div class="featured-artwork">
+                            <img 
+                                id="featured-image" 
+                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                alt="Portada de la oferta destacada" 
+                                class="hero-img"
+                            >
+                        </div>
+                    </article>
+                </section>
+
+                <!-- Sección Inferior: Cuadrícula de Resultados (Most Popular Deals) -->
+                <section id="results-section" class="catalog-section" aria-labelledby="results-heading">
+                    <div class="section-header">
+                        <h2 id="results-heading" class="section-title">Catálogo de Ofertas en Tiempo Real</h2>
+                        <span id="results-count" class="results-counter">0 registros encontrados</span>
+                    </div>
+
+                    <div id="deals-grid" class="deals-grid">
+                        <p class="empty-state">Ejecutando consulta inicial al servicio web...</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/app.js" defer></script>
+</body>
+</html>
